@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" width="1200" height="470" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace">
+<style>
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes type{from{width:0}to{width:820px}}
+@keyframes blink{50%{opacity:0}}
+@keyframes pop{0%{opacity:0;transform:scale(.9)}100%{opacity:1;transform:none}}
+text{font-size:22px}
+</style>
+<rect width="1200" height="470" rx="22" fill="#0a0f1f"/>
+<rect x="1" y="1" width="1198" height="468" rx="21" fill="none" stroke="#263063" stroke-width="2"/>
+<rect x="1" y="1" width="1198" height="54" rx="21" fill="#111833"/><rect x="1" y="34" width="1198" height="21" fill="#111833"/>
+<circle cx="32" cy="28" r="7" fill="#ff5f57"/><circle cx="56" cy="28" r="7" fill="#febc2e"/><circle cx="80" cy="28" r="7" fill="#28c840"/>
+<text x="600.0" y="35" text-anchor="middle" fill="#8c95bf" style="font-size:18px">trenchmates · MemePaws agent</text>
+<text x="1160" y="35" text-anchor="end" fill="#3ddc97" style="font-size:16px">● live</text>
+<clipPath id="tc"><rect x="44" y="84" height="40" width="0" style="animation:type 1s steps(46) .2s both"/></clipPath>
+<text x="44" y="110" fill="#ffc531" style="font-size:24px">›</text>
+<g clip-path="url(#tc)"><text x="72" y="110" fill="#e8ecff" style="font-size:22px">GTBxUiw6wJdmmkCGZgRHLyYxqu1vG4KtRpeox6yDpump</text></g>
+<text x="44" y="150" fill="#8c95bf" style="animation:in .3s ease-out 0.90s both">  scanning   dev · bundles · snipers · holders · X buzz</text><text x="44" y="188" fill="#3ddc97" style="animation:in .3s ease-out 1.25s both">  ✓  mint and freeze authorities renounced</text><text x="44" y="226" fill="#3ddc97" style="animation:in .3s ease-out 1.60s both">  ✓  liquidity $501.4K · market cap $9.99M</text><text x="44" y="264" fill="#3ddc97" style="animation:in .3s ease-out 1.95s both">  ✓  pair 21 days old · actively discussed on X</text><text x="44" y="302" fill="#ffc531" style="animation:in .3s ease-out 2.30s both">  !  liquidity is 5.0% of market cap</text>
+<g style="animation:pop .35s ease-out 2.85s both;transform-origin:600px 400px">
+<rect x="40" y="356" width="1120" height="80" rx="16" fill="#111833" stroke="#3ddc97" stroke-width="2"/>
+<text x="72" y="406" fill="#8c95bf" style="font-size:20px">VERDICT</text>
+<text x="200" y="408" fill="#e8ecff" style="font-size:28px;font-weight:700">$JEANPHIL</text>
+<text x="940" y="410" fill="#3ddc97" text-anchor="end" style="font-size:40px;font-weight:800">85/100</text>
+<text x="1120" y="408" fill="#3ddc97" text-anchor="end" style="font-size:26px;font-weight:700">SOLID</text>
+</g>
+</svg>

@@ -1,0 +1,297 @@
+// SQLite for local dev. For production switch provider to "postgresql"
+// and DATABASE_URL to your Postgres URL, then run `npm run db:push`.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  xId            String    @unique
+  username       String
+  name           String
+  avatarUrl      String?
+  bio            String?
+  followersCount Int       @default(0)
+  followingCount Int       @default(0)
+  // OAuth tokens, AES-GCM encrypted with SESSION_SECRET
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  telegramChatId String?
+  // morning digest: hour of day in UTC (0 = 08:00 in UTC+8), null = off
+  digestHourUtc  Int?      @default(0)
+  lastDigestAt   DateTime?
+  // rewards
+  referralCode   String?   @unique
+  referredById   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  agent     Agent?
+  wallets   Wallet[]
+  watch     WatchItem[]
+  alerts    Alert[]
+  messages  Message[]
+  rewards   RewardEvent[]
+  trades    SiteTrade[]
+  assistantTasks AssistantTask[]
+  assistantMsgs  AssistantMessage[]
+  trackedWallets TrackedWallet[]
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // pending | generating | ready | failed
+  status      String   @default("pending")
+  // step shown on the generation screen
+  step        String   @default("queued")
+  error       String?
+  name        String?
+  // "cat" (trencher, memecoin degen) | "dog" (suit, fundamentals)
+  mascot      String   @default("cat")
+  persona     String?
+  greeting    String?
+  // JSON: { tags: [{label, weight}], tickers: string[], accounts: string[], style: string }
+  interests   String?
+  // JSON: snapshot of what the agent learned (following sample, post stats)
+  profileData String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address   String
+  label     String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, address])
+}
+
+model WatchItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "token" (mint address) | "account" (X handle of a project)
+  kind      String
+  value     String
+  label     String?
+  // token: last volume snapshot JSON; account: newest seen post id
+  cursor    String?
+  lastAlertAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, value])
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // volume | announcement | new_token | analysis | system
+  kind      String
+  title     String
+  body      String
+  url       String?
+  // JSON with numbers for the UI (volume, change, mint...)
+  meta      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // user | agent
+  role      String
+  content   String
+  // JSON attachments, e.g. a token analysis card
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Cache of the X "tokens" feed so every user's discovery does not re-pay
+model SeenToken {
+  mint      String   @id
+  symbol    String?
+  firstSeen DateTime @default(now())
+}
+
+// $PAWS rewards ledger. `key` makes every reward idempotent per user
+// (e.g. "checkin:2026-10-10", "trade:<signature>", "follow", "ref:<userId>").
+model RewardEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  // checkin | scan | watch | trade | first_trade | follow | share | referral | referred
+  kind      String
+  points    Int
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId, createdAt])
+}
+
+// Swaps made through the site (confirmed by Jupiter). Used for trading rewards.
+model SiteTrade {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet      String
+  signature   String   @unique
+  mint        String
+  side        String
+  solAmount   Float
+  tokenAmount Float
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Tasks you manage at /rewards/admin.
+//   kind "daily":  date = YYYY-MM-DD for one day, or null for every day; claimable once per day
+//   kind "social": claimable once ever; switch off with active = false
+model RewardTask {
+  id        String   @id @default(cuid())
+  kind      String
+  // daily: scan | watch | chat | trade | post | link
+  // social: follow | repost | reply | quote | post | link
+  type      String
+  title     String
+  detail    String?
+  points    Int
+  // JSON: { need?, handle?, url?, tweetId?, terms? }
+  params    String?
+  date      String?
+  active    Boolean  @default(true)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([kind, active])
+}
+
+// Jobs the personal assistant (the dog) runs for the trader.
+//   report   send token numbers at runAt; repeats every intervalMin while remaining > 0
+//   alert    checked every minute; fires once when metric crosses threshold
+//   reminder plain text at runAt
+model AssistantTask {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String
+  title       String
+  mint        String?
+  symbol      String?
+  // mcap | price | liquidity | volume_1h | change_1h
+  metric      String?
+  // above | below
+  op          String?
+  threshold   Float?
+  note        String?
+  runAt       DateTime?
+  intervalMin Int?
+  remaining   Int?
+  baseline    Float?
+  status      String    @default("active")
+  lastRunAt   DateTime?
+  firedCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([status, runAt])
+  @@index([userId, status])
+}
+
+model AssistantMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // user | assistant
+  role      String
+  content   String
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Wallets the trader follows through the assistant (influencers, smart money).
+// Trades land as Alert rows with kind "wallet" and meta {mint, side, sol, wallet, label, sig}.
+model TrackedWallet {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address       String
+  label         String
+  emoji         String    @default("👤")
+  // what to report: popups/Telegram on or off, buys, sells, minimum size
+  alerts        Boolean   @default(true)
+  buys          Boolean   @default(true)
+  sells         Boolean   @default(true)
+  minSol        Float     @default(0)
+  lastSig       String?
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([userId, address])
+  @@index([address])
+}
+
+// Reply bot: the project's own X account (one row, id "x"), connected once by an admin
+// with write access. Tokens are AES-GCM encrypted like user tokens.
+model BotAccount {
+  id             String    @id @default("x")
+  xId            String
+  username       String
+  accessToken    String
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+// A post whose replies the bot answers: every CA in a reply gets a scan verdict.
+model ReplyCampaign {
+  id            String    @id @default(cuid())
+  tweetId       String    @unique
+  url           String
+  active        Boolean   @default(true)
+  maxPerHour    Int       @default(30)
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime  @default(now())
+
+  replies BotReply[]
+}
+
+// One row per reply we looked at, so nothing is answered twice.
+//   status: sent | skipped | failed
+model BotReply {
+  id            String        @id @default(cuid())
+  campaignId    String
+  campaign      ReplyCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sourceTweetId String        @unique
+  author        String
+  mint          String?
+  replyTweetId  String?
+  status        String
+  note          String?
+  createdAt     DateTime      @default(now())
+
+  @@index([campaignId, status, createdAt])
+  @@index([campaignId, author])
+}
